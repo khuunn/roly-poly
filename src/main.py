@@ -54,6 +54,7 @@ class TradingBot:
         self.orderbook_reader = OrderBookReader(config)
         self.portfolio = Portfolio(config, self.repo)
         self.notifier = TelegramNotifier(config, self.repo)
+        self._orderbook_failures: dict[str, int] = {}
 
         ensemble = EnsembleStrategy(
             strategies=[
@@ -198,8 +199,20 @@ class TradingBot:
             up_book, down_book = await self.orderbook_reader.get_both_books(
                 market.up_token_id, market.down_token_id
             )
+            self._orderbook_failures.pop(market.market_id, None)  # 성공 시 카운터 리셋
         except Exception:
-            logger.warning("Failed to fetch orderbooks for %s", market.slug)
+            failures = self._orderbook_failures.get(market.market_id, 0) + 1
+            self._orderbook_failures[market.market_id] = failures
+            if failures >= 3:
+                logger.info(
+                    "Market %s 오더북 3회 연속 실패 — 스캐너에서 제거", market.slug
+                )
+                self.scanner._markets.pop(market.market_id, None)
+                self._orderbook_failures.pop(market.market_id, None)
+            else:
+                logger.warning(
+                    "Failed to fetch orderbooks for %s (%d/3)", market.slug, failures
+                )
             return
 
         # Run strategies
@@ -210,9 +223,9 @@ class TradingBot:
                 continue
 
             if sig.confidence < self.config.confidence_threshold:
-                logger.debug(
-                    "%s signal too weak (%.2f < %.2f)",
-                    strategy.name, sig.confidence, self.config.confidence_threshold,
+                logger.info(
+                    "%s [%s] 신호 약함 — confidence %.2f < threshold %.2f",
+                    strategy.name, market.slug, sig.confidence, self.config.confidence_threshold,
                 )
                 continue
 

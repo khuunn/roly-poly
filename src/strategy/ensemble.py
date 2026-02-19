@@ -57,7 +57,7 @@ class EnsembleStrategy(Strategy):
             active_n, total_n = len(active_votes), len(votes)
             prefix = f"{active_n}/{total_n} active (min {self._min_votes})"
             reason = prefix + " | " + " | ".join(vote_lines)
-            logger.debug("Ensemble SKIP — insufficient votes: %s", reason)
+            logger.info("Ensemble SKIP [%s] — insufficient votes: %s", market.slug, reason)
             return Signal(signal_type=SignalType.SKIP, reason=reason)
 
         # Count direction votes
@@ -77,7 +77,7 @@ class EnsembleStrategy(Strategy):
         # Check for tie
         if len(top_two) > 1 and top_two[0][1] == top_two[1][1]:
             reason = f"tie {top_two[0][1]}v{top_two[1][1]} | " + " | ".join(vote_lines)
-            logger.debug("Ensemble SKIP — tie: %s", reason)
+            logger.info("Ensemble SKIP [%s] — tie: %s", market.slug, reason)
             return Signal(signal_type=SignalType.SKIP, reason=reason)
 
         # Calculate average confidence from agreeing signals
