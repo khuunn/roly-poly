@@ -250,6 +250,11 @@ class TradingBot:
                     sig.signal_type.value, market.slug, trade.price, trade.amount,
                 )
                 break  # One trade per market per tick
+            else:
+                logger.warning(
+                    "시그널 발생했으나 체결 실패 [%s] strategy=%s signal=%s confidence=%.2f",
+                    market.slug, strategy.name, sig.signal_type.value, sig.confidence,
+                )
 
     async def _check_circuit_breaker(self) -> str | None:
         """리스크 한도 초과 확인. 초과 시 사유 문자열 반환."""
