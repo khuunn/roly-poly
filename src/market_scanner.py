@@ -71,6 +71,17 @@ class MarketScanner:
         await self._client.aclose()
         logger.info("MarketScanner stopped")
 
+    async def force_scan_slug(self, slug: str) -> Market | None:
+        """특정 slug를 강제로 스캔하여 스캐너 캐시에 업데이트."""
+        event = await self._fetch_event(slug)
+        if event is None:
+            return None
+        market = self._parse_event(event)
+        if market is None:
+            return None
+        self._markets[market.market_id] = market
+        return market
+
     async def scan_once(self) -> list[Market]:
         """Scan current and recent 5-min slots. Returns newly discovered or updated markets."""
         now = int(time.time())

@@ -144,6 +144,25 @@ class TradingBot:
                     pass
             await asyncio.sleep(self.config.market_scan_interval)
 
+    async def _refresh_open_trade_markets(self) -> None:
+        """열린 포지션의 마켓이 스캔 범위를 벗어나도 항상 추적."""
+        open_trades = await self.repo.get_all_open_trades()
+        tracked_ids = set(self.scanner.markets.keys())
+
+        for trade in open_trades:
+            if trade.market_id in tracked_ids:
+                continue
+            # 스캔 범위 밖으로 나간 마켓 — DB에서 slug 가져와서 강제 스캔
+            saved_market = await self.repo.get_market(trade.market_id)
+            if saved_market is None:
+                continue
+            market = await self.scanner.force_scan_slug(saved_market.slug)
+            if market:
+                logger.info(
+                    "열린 포지션 마켓 재추적: %s (status=%s)",
+                    market.slug, market.status.value,
+                )
+
     async def _tick(self) -> None:
         health = Path("data/health")
         health.parent.mkdir(parents=True, exist_ok=True)
@@ -151,6 +170,10 @@ class TradingBot:
 
         # 1. Scan for active markets
         await self.scanner.scan_once()
+
+        # 1-1. 열린 포지션 마켓이 스캔 범위 밖으로 나간 경우 강제 추적
+        await self._refresh_open_trade_markets()
+
         all_markets = list(self.scanner.markets.values())
         if not all_markets:
             logger.debug("No active 5m BTC markets found")

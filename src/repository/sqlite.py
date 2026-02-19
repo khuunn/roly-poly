@@ -219,6 +219,13 @@ class SQLiteRepository(Repository):
         rows = await cursor.fetchall()
         return [_row_to_trade(r) for r in rows]
 
+    async def get_all_open_trades(self) -> list[Trade]:
+        cursor = await self.db.execute(
+            "SELECT * FROM trades WHERE resolved = 0 ORDER BY timestamp DESC",
+        )
+        rows = await cursor.fetchall()
+        return [_row_to_trade(r) for r in rows]
+
     # ── Portfolio ───────────────────────────────────────────────────
 
     async def save_portfolio_snapshot(self, snapshot: PortfolioSnapshot) -> None:

@@ -60,5 +60,9 @@ class Repository(ABC):
         """Get unresolved trades for a specific market."""
 
     @abstractmethod
+    async def get_all_open_trades(self) -> list[Trade]:
+        """Get all unresolved trades across all markets."""
+
+    @abstractmethod
     async def close(self) -> None:
         """Clean up connections."""
