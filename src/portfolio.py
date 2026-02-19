@@ -55,18 +55,42 @@ class Portfolio:
         return self._max_drawdown
 
     async def restore(self) -> None:
-        """Restore state from the latest persisted snapshot."""
+        """Restore state from trades (ground truth) + snapshot (max_drawdown).
+
+        스냅샷 잔액 대신 실제 거래 내역으로 재계산하여 수동 수정 등
+        edge case에서도 항상 정확한 상태를 보장한다.
+        """
+        # 1. 전체 거래 내역으로 잔액·통계 재계산
+        all_trades = await self._repository.get_trades(limit=10000)
+        open_trades = await self._repository.get_all_open_trades()
+        open_ids = {t.trade_id for t in open_trades}
+
+        resolved = [t for t in all_trades if t.resolved and t.pnl is not None]
+        open_list = [t for t in all_trades if t.trade_id in open_ids]
+
+        wins   = sum(1 for t in resolved if t.pnl > 0)
+        losses = sum(1 for t in resolved if t.pnl <= 0)
+        total_pnl = sum(t.pnl for t in resolved)
+
+        # balance = 초기자본 + 확정된 pnl - 미결 포지션 비용
+        open_cost = sum(t.amount + t.fee for t in open_list)
+        balance = self._initial_capital + total_pnl - open_cost
+
+        self._balance = balance
+        self._total_trades = len(resolved)
+        self._wins = wins
+        self._losses = losses
+        self._total_pnl = total_pnl
+        self._peak_balance = max(balance, self._initial_capital)
+
+        # 2. max_drawdown은 히스토리 재구성이 복잡 — 스냅샷 값 사용
         snapshot = await self._repository.get_latest_snapshot()
-        if snapshot is None:
+        self._max_drawdown = snapshot.max_drawdown if snapshot else 0.0
+
+        if not all_trades:
             logger.info("No snapshot found — starting fresh")
             return
-        self._balance = snapshot.balance
-        self._total_trades = snapshot.total_trades
-        self._wins = snapshot.wins
-        self._losses = snapshot.losses
-        self._total_pnl = snapshot.total_pnl
-        self._max_drawdown = snapshot.max_drawdown
-        self._peak_balance = max(self._balance, self._initial_capital)
+
         logger.info(
             "Restored portfolio — balance=%.2f trades=%d wins=%d losses=%d pnl=%.2f",
             self._balance, self._total_trades, self._wins, self._losses, self._total_pnl,
