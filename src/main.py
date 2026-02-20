@@ -20,6 +20,7 @@ from src.portfolio import Portfolio
 from src.price_feed import PriceFeed
 from src.repository.sqlite import SQLiteRepository
 from src.strategy.arbitrage import ArbitrageStrategy
+from src.strategy.btc_momentum import BtcMomentumStrategy
 from src.strategy.directional import DirectionalStrategy
 from src.strategy.ensemble import EnsembleStrategy
 from src.strategy.orderbook_imbalance import OrderbookImbalanceStrategy
@@ -60,6 +61,10 @@ class TradingBot:
             strategies=[
                 DirectionalStrategy(),
                 OrderbookImbalanceStrategy(config),
+                BtcMomentumStrategy(
+                    lookback_sec=60,
+                    threshold_pct=0.05,
+                ),
             ],
             min_votes=config.ensemble_min_votes,
         )
