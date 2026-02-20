@@ -1,3 +1,5 @@
+> ⚠️ **DEPRECATED** — 이 레포는 [roly-suite](https://github.com/khuunn/roly-suite)의 `polymarket/` 패키지로 이전되었습니다.
+
 # Polymarket Trading Bot
 
 Polymarket 5분 BTC Up/Down 마켓을 대상으로 한 paper trading bot. 앙상블 전략으로 시그널을 생성하고, 텔레그램으로 실시간 알림 및 명령어를 지원한다.
