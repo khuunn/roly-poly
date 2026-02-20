@@ -234,15 +234,15 @@ class TradingBot:
         remaining = self._SLOT_DURATION - elapsed  # 슬롯 종료까지 남은 시간
 
         if elapsed < self._TIMING_BUFFER:
-            logger.debug(
-                "Timing filter: %s — too early (%.0fs elapsed, need >%ds)",
+            logger.info(
+                "Timing SKIP: %s — too early (%.0fs elapsed, need >%ds)",
                 slug, elapsed, self._TIMING_BUFFER,
             )
             return False
 
         if remaining < self._TIMING_BUFFER:
-            logger.debug(
-                "Timing filter: %s — too late (%.0fs remaining, need >%ds)",
+            logger.info(
+                "Timing SKIP: %s — too late (%.0fs remaining, need >%ds)",
                 slug, remaining, self._TIMING_BUFFER,
             )
             return False
