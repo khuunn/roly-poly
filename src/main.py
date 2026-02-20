@@ -214,12 +214,51 @@ class TradingBot:
         # 6. Tick 종료 시 스냅샷 저장 — 해소/거래 모두 반영된 최신 상태
         await self.portfolio.save_snapshot()
 
+    _SLOT_DURATION = 300   # 5분 마켓 = 300초
+    _TIMING_BUFFER = 30    # 앞뒤 30초 제외
+
+    def _in_safe_window(self, slug: str) -> bool:
+        """5분 마켓 슬롯의 앞/뒤 30초는 노이즈가 심해 진입 제외.
+
+        slug 예시: btc-updown-5m-1771560900
+        슬롯 타임스탬프 = 마켓 시작 Unix 시각
+        안전 구간: [start + 30s, start + 270s]
+        """
+        try:
+            slot_ts = int(slug.rsplit("-", 1)[-1])
+        except (ValueError, IndexError):
+            return True  # 파싱 실패 시 필터 미적용
+
+        now = time.time()
+        elapsed = now - slot_ts          # 슬롯 시작으로부터 경과 시간
+        remaining = self._SLOT_DURATION - elapsed  # 슬롯 종료까지 남은 시간
+
+        if elapsed < self._TIMING_BUFFER:
+            logger.debug(
+                "Timing filter: %s — too early (%.0fs elapsed, need >%ds)",
+                slug, elapsed, self._TIMING_BUFFER,
+            )
+            return False
+
+        if remaining < self._TIMING_BUFFER:
+            logger.debug(
+                "Timing filter: %s — too late (%.0fs remaining, need >%ds)",
+                slug, remaining, self._TIMING_BUFFER,
+            )
+            return False
+
+        return True
+
     async def _evaluate_market(
         self, market, price_history: list[float]
     ) -> None:
         # Skip if we already have an open trade on this market
         open_trades = await self.repo.get_open_trades_for_market(market.market_id)
         if open_trades:
+            return
+
+        # Timing filter: avoid first / last N seconds of each 5-min window
+        if not self._in_safe_window(market.slug):
             return
 
         # Fetch orderbooks
