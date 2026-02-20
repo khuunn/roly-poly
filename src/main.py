@@ -296,13 +296,14 @@ class TradingBot:
         return None
 
     async def _calculate_daily_loss(self) -> float:
-        """오늘 자정(KST) 이후 확정된 손실 합계."""
+        """오늘 자정(KST) 이후 순손실 (손실 - 수익). 양수면 순손실, 음수면 순이익."""
         kst = timezone(timedelta(hours=9))
         today_start = datetime.now(kst).replace(
             hour=0, minute=0, second=0, microsecond=0
         ).astimezone(timezone.utc)
         trades = await self.repo.get_trades_since(today_start)
-        return abs(sum(t.pnl for t in trades if t.resolved and t.pnl and t.pnl < 0))
+        net_pnl = sum(t.pnl for t in trades if t.resolved and t.pnl is not None)
+        return -net_pnl if net_pnl < 0 else 0.0
 
     async def _check_resolutions(self, markets) -> None:
         for market in markets:
