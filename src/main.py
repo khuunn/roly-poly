@@ -62,7 +62,7 @@ class TradingBot:
                 DirectionalStrategy(),
                 OrderbookImbalanceStrategy(config),
                 BtcMomentumStrategy(
-                    lookback_sec=60,
+                    price_feed=self.price_feed,
                     threshold_pct=0.05,
                 ),
             ],
